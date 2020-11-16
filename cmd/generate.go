@@ -58,15 +58,6 @@ func init() {
 	viper.BindPFlag("baseUri", generateCmd.PersistentFlags().Lookup("baseUri"))
 	rootCmd.AddCommand(generateCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// generateCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// generateCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 func check(e error) {
@@ -76,13 +67,8 @@ func check(e error) {
 }
 
 func generateTemplate() {
-	dat, err := ioutil.ReadFile("templates/node-typescript.mustache")
+	dat, err := ioutil.ReadFile("templates/node-typescript.hbs")
 	check(err)
-	//fmt.Print(string(dat))
-	// tpl, err := raymond.Parse(string(dat))
-	// if err != nil {
-	// 	return "", err
-	// }
 	flags, err := queryAPI()
 	if err != nil {
 		panic(err)
@@ -117,14 +103,11 @@ func generateTemplate() {
 				fmt.Printf("I don't know about type %T!\n", s)
 				return ""
 			}
-			// boolCheck, _ := strconv.ParseBool(returnVar)
-			// if boolCheck != true {
-			// 	returnVar = fmt.Sprintf("%v", returnVar)
-			// }
 		} else {
-			tempVar := *flag.Variations[0].Value
-			//returnVar = fmt.Sprintf("%v", tempVar)
-			switch s := tempVar.(type) {
+			varCheck := *flag.Variations[0].Value
+			offVar := flag.Variations[len(flag.Variations)-1]
+			tempVar := *offVar.Value
+			switch s := varCheck.(type) {
 			case float64:
 				returnVar = fmt.Sprintf("%v", tempVar)
 			case string:
