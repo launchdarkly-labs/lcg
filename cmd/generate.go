@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	"github.com/aymerick/raymond"
 	"github.com/iancoleman/strcase"
@@ -74,8 +75,14 @@ func generateTemplate() {
 		panic(err)
 	}
 
-	raymond.RegisterHelper("defaultValue", func(flag ldapi.FeatureFlag) string {
+	raymond.RegisterHelper("defaultValue", func(flag ldapi.FeatureFlag, quotes string) string {
 		var returnVar string
+		var quoteWrapper string
+		if quotes == "single" {
+			quoteWrapper = "'"
+		} else {
+			quoteWrapper = "\""
+		}
 		if flag.Defaults != nil {
 			defaultVar := flag.Defaults.OffVariation
 			tempVar := *flag.Variations[defaultVar].Value
@@ -84,7 +91,7 @@ func generateTemplate() {
 			case float64:
 				returnVar = fmt.Sprintf("%v", tempVar)
 			case string:
-				returnVar = fmt.Sprintf("%q", tempVar)
+				returnVar = strings.Join([]string{quoteWrapper, fmt.Sprintf(`%s`, tempVar), quoteWrapper}, "")
 			case bool:
 				returnVar = fmt.Sprintf("%v", tempVar)
 			case map[string]interface{}:
@@ -111,7 +118,7 @@ func generateTemplate() {
 			case float64:
 				returnVar = fmt.Sprintf("%v", tempVar)
 			case string:
-				returnVar = fmt.Sprintf("%q", tempVar)
+				returnVar = strings.Join([]string{quoteWrapper, fmt.Sprintf(`%s`, tempVar), quoteWrapper}, "")
 			case bool:
 				returnVar = fmt.Sprintf("%v", tempVar)
 			case map[string]interface{}:

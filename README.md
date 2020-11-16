@@ -17,3 +17,6 @@ This application uses `cobra` to handle commands. `raymond` for rendering out th
 
 ## Roadmap
 * Ability to pass in your own templates with optional default overrides.
+
+## Ideas
+* Generate a changelog for any changes.
