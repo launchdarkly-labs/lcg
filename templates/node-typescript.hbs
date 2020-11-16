@@ -1,0 +1,28 @@
+import { LDUser, LDClient } from 'launchdarkly-node-server-sdk'
+
+/** Class containing functions of all LaunchDarkly flags with default values mapped. */
+export class LDFlags {
+    private readonly ldClient: LDClient
+   /**
+   * @param {LDClient} ldClient - pass in a LDClient for all flags to use in evaluation.
+   */
+    constructor(ldClient: LDClient ) {
+        this.ldClient = ldClient;
+    }
+
+    {{#each items}}
+    /**
+    {{#if this.name}}
+     * {{ this.name }}
+    {{/if~}}
+    {{#if this.description}}
+     * {{ this.description }}
+    {{/if}}
+     * @param {LDUser} user accepts an LDUser object for flag evaluation
+     */
+    async {{camelCase this.key}}(user: LDUser): Promise<{{ returnCheck this }}> {
+        return this.ldClient.variation('{{ this.key }}', user, {{{ defaultValue this }}})
+    }
+
+    {{/each}}
+}
