@@ -18,6 +18,7 @@ package cmd
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/antihax/optional"
@@ -39,12 +40,15 @@ var generateCmd = &cobra.Command{
 	},
 }
 
-var language string
-var apiToken string
-var projectKey string
-var outFile string
-var baseUri string
-var tags string
+var (
+	language        string
+	apiToken        string
+	projectKey      string
+	outFile         string
+	baseUri         string
+	tags            string
+	sdkAvailability string
+)
 
 func init() {
 	generateCmd.PersistentFlags().StringVarP(&language, "language", "l", "", "language files to output")
@@ -61,6 +65,8 @@ func init() {
 	viper.SetDefault("baseUri", "https://app.launchdarkly.com")
 	generateCmd.PersistentFlags().StringVarP(&tags, "tags", "t", "", "Filter flags to specific tag")
 	viper.BindPFlag("tags", generateCmd.PersistentFlags().Lookup("tags"))
+	generateCmd.PersistentFlags().StringVarP(&sdkAvailability, "sdkAvailability", "a", "", "Filter flags based on client side availability")
+	viper.BindPFlag("sdkAvailability", generateCmd.PersistentFlags().Lookup("sdkAvailability"))
 	rootCmd.AddCommand(generateCmd)
 
 }
@@ -78,26 +84,9 @@ func generateTemplate() {
 	check(err)
 	flags, err := queryAPI()
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
-
-	raymond.RegisterHelper("defaultValue", func(flag ldapi.FeatureFlag, quotes string) string {
-		var quoteWrapper string
-		if quotes == "single" {
-			quoteWrapper = "'"
-		} else {
-			quoteWrapper = "\""
-		}
-		if flag.Defaults != nil {
-			defaultVar := flag.Defaults.OffVariation
-			tempVar := *flag.Variations[defaultVar].Value
-			return parseReturnValues(tempVar, quoteWrapper)
-		} else {
-			offVar := flag.Variations[len(flag.Variations)-1]
-			tempVar := *offVar.Value
-			return parseReturnValues(tempVar, quoteWrapper)
-		}
-	})
 	// Register raymond template helpers
 	templateHelpers()
 	//data, err := tpl.Exec(flags)
@@ -113,20 +102,23 @@ func generateTemplate() {
 }
 
 func queryAPI() (ldapi.FeatureFlags, error) {
-	client, err := launchdarkly.NewClient(&launchdarkly.LaunchdarklyConfig{viper.GetString("apiToken"), viper.GetString("baseUri")})
+	client, err := launchdarkly.NewClient(&launchdarkly.LaunchdarklyConfig{AccessToken: viper.GetString("apiToken"), BaseUri: viper.GetString("baseUri")})
 	if err != nil {
-		fmt.Println(err)
 		return ldapi.FeatureFlags{}, err
 	}
 	var tagFilter ldapi.GetFeatureFlagsOpts
 	if viper.GetString("tags") != "" {
-		tagFilter = ldapi.GetFeatureFlagsOpts{
-			Tag: optional.NewString(viper.GetString("tags")),
-		}
+		tagFilter.Tag = optional.NewString(viper.GetString("tags"))
+	}
+
+	if viper.GetString("tags") != "" {
+		tagFilter.Tag = optional.NewString(viper.GetString("tags"))
+	}
+	if viper.GetString("sdkAvailability") != "" {
+		tagFilter.Filter = optional.NewString(strings.Join([]string{"sdkAvailability", viper.GetString("sdkAvailability")}, ":"))
 	}
 	featureFlags, _, err := client.Ld.FeatureFlagsApi.GetFeatureFlags(client.Ctx, projectKey, &tagFilter)
 	if err != nil {
-		fmt.Println(err)
 		return ldapi.FeatureFlags{}, err
 	}
 

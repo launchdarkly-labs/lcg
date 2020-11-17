@@ -12,7 +12,7 @@ import (
 )
 
 func templateHelpers() {
-	raymond.RegisterHelper("camelCase", func(name string) string {
+	raymond.RegisterHelper("lowerCamelCase", func(name string) string {
 		return strcase.ToLowerCamel(name)
 	})
 
@@ -20,24 +20,66 @@ func templateHelpers() {
 		return strcase.ToSnake(name)
 	})
 
-	raymond.RegisterHelper("returnCheck", func(flag ldapi.FeatureFlag) string {
+	raymond.RegisterHelper("returnCheck", func(flag ldapi.FeatureFlag, options *raymond.Options) string {
 		flagVar := *flag.Variations[0].Value
 		switch s := flagVar.(type) {
 		case float64:
-			return "number"
+			return options.DataStr("outNumber")
 		case string:
-			return "string"
+			return options.DataStr("outString")
 		case bool:
-			return "boolean"
+			return options.DataStr("outBool")
 		case map[string]interface{}:
-			return "Object"
+			return options.DataStr("outMap")
 		case []interface{}:
-			return "Object"
+			return options.DataStr("outMap")
 		default:
 			fmt.Printf("I don't know about type %T!\n", s)
 			return ""
 		}
 	})
+	raymond.RegisterHelper("defaultValue", func(flag ldapi.FeatureFlag, quotes string) string {
+		var quoteWrapper string
+		if quotes == "single" {
+			quoteWrapper = "'"
+		} else {
+			quoteWrapper = "\""
+		}
+		if flag.Defaults != nil {
+			defaultVar := flag.Defaults.OffVariation
+			tempVar := *flag.Variations[defaultVar].Value
+			return parseReturnValues(tempVar, quoteWrapper)
+		} else {
+			offVar := flag.Variations[len(flag.Variations)-1]
+			tempVar := *offVar.Value
+			return parseReturnValues(tempVar, quoteWrapper)
+		}
+	})
+
+	raymond.RegisterHelper("outNumber", func(val1 string, options *raymond.Options) string {
+		frame := options.DataFrame()
+		frame.Set("outNumber", val1)
+		return options.FnData(frame)
+	})
+
+	raymond.RegisterHelper("outBool", func(val1 string, options *raymond.Options) string {
+		frame := options.DataFrame()
+		frame.Set("outBool", val1)
+		return options.FnData(frame)
+	})
+
+	raymond.RegisterHelper("outString", func(val1 string, options *raymond.Options) string {
+		frame := options.DataFrame()
+		frame.Set("outString", val1)
+		return options.FnData(frame)
+	})
+
+	raymond.RegisterHelper("outMap", func(val1 string, options *raymond.Options) string {
+		frame := options.DataFrame()
+		frame.Set("outMap", val1)
+		return options.FnData(frame)
+	})
+
 }
 
 func parseReturnValues(tempVar interface{}, quoteWrapper string) string {

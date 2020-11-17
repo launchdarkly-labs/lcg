@@ -27,11 +27,18 @@ import (
 
 var cfgFile string
 
+//Version added during build via Goreleaser
+var Version string
+
+//GitCommit Added during build via Goreleaser
+var GitCommit string
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "launchdarkly-code-generator",
-	Short: "Generate wrapper scripts for LaunchDarkly",
-	Long:  `Generate wrapper scripts for LaunchDarkly`,
+	Use:     "lcg",
+	Short:   "Generate wrapper scripts for LaunchDarkly",
+	Long:    `Generate wrapper scripts for LaunchDarkly`,
+	Version: Version,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	//	Run: func(cmd *cobra.Command, args []string) { },
@@ -54,6 +61,8 @@ func init() {
 	// will be global for your application.
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.launchdarkly-code-generator.yaml)")
+	rootCmd.SetVersionTemplate("launchdarkly-code-generation version: {{.Version}}\n")
+
 }
 
 // initConfig reads in config file and ENV variables if set.
