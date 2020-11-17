@@ -16,15 +16,15 @@ limitations under the License.
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"strings"
 
+	"github.com/antihax/optional"
 	"github.com/aymerick/raymond"
-	"github.com/iancoleman/strcase"
 	"github.com/intheclouddan/launchdarkly-code-generator/launchdarkly"
 	ldapi "github.com/launchdarkly/api-client-go"
+	"github.com/markbates/pkger"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -44,6 +44,7 @@ var apiToken string
 var projectKey string
 var outFile string
 var baseUri string
+var tags string
 
 func init() {
 	generateCmd.PersistentFlags().StringVarP(&language, "language", "l", "", "language files to output")
@@ -57,6 +58,9 @@ func init() {
 	viper.BindPFlag("outFile", generateCmd.PersistentFlags().Lookup("outFile"))
 	generateCmd.PersistentFlags().StringVarP(&baseUri, "baseUri", "b", "", "LaunchDarkly Instance")
 	viper.BindPFlag("baseUri", generateCmd.PersistentFlags().Lookup("baseUri"))
+	viper.SetDefault("baseUri", "https://app.launchdarkly.com")
+	generateCmd.PersistentFlags().StringVarP(&tags, "tags", "t", "", "Filter flags to specific tag")
+	viper.BindPFlag("tags", generateCmd.PersistentFlags().Lookup("tags"))
 	rootCmd.AddCommand(generateCmd)
 
 }
@@ -68,7 +72,9 @@ func check(e error) {
 }
 
 func generateTemplate() {
-	dat, err := ioutil.ReadFile("templates/node-typescript.hbs")
+	templateFile, err := pkger.Open(strings.Join([]string{"/templates/", viper.GetString("language"), ".hbs"}, ""))
+	check(err)
+	dat, err := ioutil.ReadAll(templateFile)
 	check(err)
 	flags, err := queryAPI()
 	if err != nil {
@@ -76,7 +82,6 @@ func generateTemplate() {
 	}
 
 	raymond.RegisterHelper("defaultValue", func(flag ldapi.FeatureFlag, quotes string) string {
-		var returnVar string
 		var quoteWrapper string
 		if quotes == "single" {
 			quoteWrapper = "'"
@@ -86,81 +91,15 @@ func generateTemplate() {
 		if flag.Defaults != nil {
 			defaultVar := flag.Defaults.OffVariation
 			tempVar := *flag.Variations[defaultVar].Value
-			returnVar = fmt.Sprintf("%v", tempVar)
-			switch s := tempVar.(type) {
-			case float64:
-				returnVar = fmt.Sprintf("%v", tempVar)
-			case string:
-				returnVar = strings.Join([]string{quoteWrapper, fmt.Sprintf(`%s`, tempVar), quoteWrapper}, "")
-			case bool:
-				returnVar = fmt.Sprintf("%v", tempVar)
-			case map[string]interface{}:
-				jsonVal, err := json.Marshal(tempVar)
-				if err != nil {
-					panic(err)
-				}
-				returnVar = string(jsonVal)
-			case []interface{}:
-				jsonVal, err := json.Marshal(tempVar)
-				if err != nil {
-					panic(err)
-				}
-				returnVar = string(jsonVal)
-			default:
-				fmt.Printf("I don't know about type %T!\n", s)
-				return ""
-			}
+			return parseReturnValues(tempVar, quoteWrapper)
 		} else {
-			varCheck := *flag.Variations[0].Value
 			offVar := flag.Variations[len(flag.Variations)-1]
 			tempVar := *offVar.Value
-			switch s := varCheck.(type) {
-			case float64:
-				returnVar = fmt.Sprintf("%v", tempVar)
-			case string:
-				returnVar = strings.Join([]string{quoteWrapper, fmt.Sprintf(`%s`, tempVar), quoteWrapper}, "")
-			case bool:
-				returnVar = fmt.Sprintf("%v", tempVar)
-			case map[string]interface{}:
-				jsonVal, err := json.Marshal(tempVar)
-				if err != nil {
-					panic(err)
-				}
-				returnVar = string(jsonVal)
-			case []interface{}:
-				jsonVal, err := json.Marshal(tempVar)
-				if err != nil {
-					panic(err)
-				}
-				returnVar = string(jsonVal)
-			default:
-				fmt.Printf("I don't know about type %T!\n", s)
-				return ""
-			}
-		}
-		return returnVar
-	})
-	raymond.RegisterHelper("camelCase", func(name string) string {
-		return strcase.ToLowerCamel(name)
-	})
-	raymond.RegisterHelper("returnCheck", func(flag ldapi.FeatureFlag) string {
-		flagVar := *flag.Variations[0].Value
-		switch s := flagVar.(type) {
-		case float64:
-			return "number"
-		case string:
-			return "string"
-		case bool:
-			return "boolean"
-		case map[string]interface{}:
-			return "Object"
-		case []interface{}:
-			return "Object"
-		default:
-			fmt.Printf("I don't know about type %T!\n", s)
-			return ""
+			return parseReturnValues(tempVar, quoteWrapper)
 		}
 	})
+	// Register raymond template helpers
+	templateHelpers()
 	//data, err := tpl.Exec(flags)
 	data := raymond.MustRender(string(dat), flags)
 	if err != nil {
@@ -179,7 +118,13 @@ func queryAPI() (ldapi.FeatureFlags, error) {
 		fmt.Println(err)
 		return ldapi.FeatureFlags{}, err
 	}
-	featureFlags, _, err := client.Ld.FeatureFlagsApi.GetFeatureFlags(client.Ctx, projectKey, nil)
+	var tagFilter ldapi.GetFeatureFlagsOpts
+	if viper.GetString("tags") != "" {
+		tagFilter = ldapi.GetFeatureFlagsOpts{
+			Tag: optional.NewString(viper.GetString("tags")),
+		}
+	}
+	featureFlags, _, err := client.Ld.FeatureFlagsApi.GetFeatureFlags(client.Ctx, projectKey, &tagFilter)
 	if err != nil {
 		fmt.Println(err)
 		return ldapi.FeatureFlags{}, err
