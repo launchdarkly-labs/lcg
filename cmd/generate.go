@@ -106,18 +106,17 @@ func queryAPI() (ldapi.FeatureFlags, error) {
 	if err != nil {
 		return ldapi.FeatureFlags{}, err
 	}
-	var tagFilter ldapi.GetFeatureFlagsOpts
-	if viper.GetString("tags") != "" {
-		tagFilter.Tag = optional.NewString(viper.GetString("tags"))
-	}
 
+	// Build flag filters to determine which flags to return. Only supports tag and sdkAvailability
+	var flagFilter ldapi.GetFeatureFlagsOpts
 	if viper.GetString("tags") != "" {
-		tagFilter.Tag = optional.NewString(viper.GetString("tags"))
+		flagFilter.Tag = optional.NewString(viper.GetString("tags"))
 	}
 	if viper.GetString("sdkAvailability") != "" {
-		tagFilter.Filter = optional.NewString(strings.Join([]string{"sdkAvailability", viper.GetString("sdkAvailability")}, ":"))
+		flagFilter.Filter = optional.NewString(strings.Join([]string{"sdkAvailability", viper.GetString("sdkAvailability")}, ":"))
 	}
-	featureFlags, _, err := client.Ld.FeatureFlagsApi.GetFeatureFlags(client.Ctx, projectKey, &tagFilter)
+
+	featureFlags, _, err := client.Ld.FeatureFlagsApi.GetFeatureFlags(client.Ctx, projectKey, &flagFilter)
 	if err != nil {
 		return ldapi.FeatureFlags{}, err
 	}
