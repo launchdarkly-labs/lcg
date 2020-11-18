@@ -4,10 +4,10 @@
 
 Until packing is added to compile in the templates you can test the program by running:
 ```
-go run main.go generate --apiToken api-12345 --projectKey default --outFile ./LDFlags.ts --baseUri "https://app.launchdarkly.com"
+go run main.go generate --apiToken api-12345 --projectKey default --outFile ./LDFlags.py --language python
 ```
 
-This will generate a new file `LDFlags.ts` in the current directory.
+This will generate a new file `LDFlags.py` in the current directory.
 
 Each flag's default value will be set to the `OffVariation` under `Defaults`. It currently does not handle the case were no `OffVariation` is set.
 
