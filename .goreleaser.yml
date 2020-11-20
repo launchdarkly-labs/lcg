@@ -14,6 +14,8 @@ builds:
     ldflags:
       - "-s -w -X main.Version={{.Version}} -X main.GitCommit={{.ShortCommit}} -X github.com/launchdarkly/lcg-private/launchdarkly.cmd={{.Version}} -X github.com/launchdarkly/lcg-private/cmd.GitCommit={{.ShortCommit}}"
     binary: "lcg"
+    goarch:
+      - amd64
 archives:
   - replacements:
       darwin: Darwin

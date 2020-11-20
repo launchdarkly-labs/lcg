@@ -49,8 +49,9 @@ var (
 	baseURI         string
 	tags            string
 	sdkAvailability string
-	localKey        string
-	localDefault    string
+	localKey        []string
+	localDefault    []string
+	localType       []string
 	inputTemplate   string
 )
 
@@ -70,10 +71,12 @@ func init() {
 	viper.BindPFlag("tags", generateCmd.PersistentFlags().Lookup("tags"))
 	generateCmd.PersistentFlags().StringVarP(&sdkAvailability, "sdkAvailability", "a", "", "Filter flags based on client side availability")
 	viper.BindPFlag("sdkAvailability", generateCmd.PersistentFlags().Lookup("sdkAvailability"))
-	generateCmd.PersistentFlags().StringVarP(&localKey, "localKey", "", "", "Temporary local flag key appended to class")
+	generateCmd.PersistentFlags().StringSliceVar(&localKey, "localKey", nil, "Temporary local flags key appended to class")
 	viper.BindPFlag("localKey", generateCmd.PersistentFlags().Lookup("localKey"))
-	generateCmd.PersistentFlags().StringVarP(&localDefault, "localDefault", "", "", "Temporary local default value appended to class")
+	generateCmd.PersistentFlags().StringSliceVar(&localDefault, "localDefault", nil, "Temporary local default values appended to class")
 	viper.BindPFlag("localDefault", generateCmd.PersistentFlags().Lookup("localDefault"))
+	generateCmd.PersistentFlags().StringSliceVar(&localType, "localType", nil, "Temporary local return types appended to class")
+	viper.BindPFlag("localType", generateCmd.PersistentFlags().Lookup("localType"))
 	generateCmd.PersistentFlags().StringVarP(&inputTemplate, "inputTemplate", "", "", "Read in a template to be rendered")
 	viper.BindPFlag("inputTemplate", generateCmd.PersistentFlags().Lookup("inputTemplate"))
 	rootCmd.AddCommand(generateCmd)
@@ -109,16 +112,37 @@ func generateTemplate() {
 	}
 	// Register raymond template helpers
 	templateHelpers()
+	type localFlagss struct {
+		Flag    string
+		Default string
+		Type    string
+	}
+	var localFlags []localFlagss
+	//var localFlagMap map[string]interface{}
+	if localKey != nil {
+		for idx, flag := range localKey {
+			localFlags = append(localFlags, localFlagss{
+				Flag:    flag,
+				Default: localDefault[idx],
+				Type:    localType[idx],
+			})
+		}
+	}
 	//data, err := tpl.Exec(flags)
-	data := raymond.MustRender(string(dat), flags)
+	ctx := make(map[string]interface{})
+	ctx["flags"] = flags
+	ctx["localFlags"] = localFlags
+
+	data := raymond.MustRender(string(dat), ctx)
 	if err != nil {
 		fmt.Printf("failed to parse flags: %s", err)
 	}
 
 	d1 := []byte(data)
-	err = ioutil.WriteFile(outFile, d1, 0644)
+	localOutFile := viper.GetString("outFile")
+	err = ioutil.WriteFile(localOutFile, d1, 0644)
 	check(err)
-	fmt.Printf("New LaunchDarkly flag generation written to %s\n", outFile)
+	fmt.Printf("New LaunchDarkly flag generation written to %s\n", localOutFile)
 }
 
 func queryAPI() (ldapi.FeatureFlags, error) {
@@ -136,7 +160,7 @@ func queryAPI() (ldapi.FeatureFlags, error) {
 		flagFilter.Filter = optional.NewString(strings.Join([]string{"sdkAvailability", viper.GetString("sdkAvailability")}, ":"))
 	}
 
-	featureFlags, _, err := client.Ld.FeatureFlagsApi.GetFeatureFlags(client.Ctx, projectKey, &flagFilter)
+	featureFlags, _, err := client.Ld.FeatureFlagsApi.GetFeatureFlags(client.Ctx, viper.GetString("projectKey"), &flagFilter)
 	if err != nil {
 		return ldapi.FeatureFlags{}, err
 	}

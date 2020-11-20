@@ -19,7 +19,7 @@ export class LDFlags {
     this.ldClient = ldClient;
   }
 
-  {{#each items}}
+  {{#each flags.items}}
   /**
   {{#if this.name}}
    * {{ this.name }}
@@ -35,5 +35,10 @@ export class LDFlags {
   {{#unless @last}}
 
   {{/unless}}
+  {{~/each~}}
+  {{#each localFlags }}
+  async {{lowerCamelCase Flag}}(user: LDUser): Promise<{{ localType Type }}> {
+    return this.ldClient.variation('{{ Flag }}', user, {{{ localValue Default Type "single" }}});
+  }
   {{~/each~}}
 }

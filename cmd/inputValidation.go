@@ -8,14 +8,14 @@ import (
 )
 
 func localOverridesValidation() {
-	if len(viper.GetString("localKey")) != 0 {
-		if len(viper.GetString("localDefault")) == 0 {
+	if (viper.GetStringSlice("localKey") != nil) && len(viper.GetStringSlice("localKey")) != 0 {
+		if (viper.GetStringSlice("localDefault") != nil) && len(viper.GetStringSlice("localDefault")) == 0 {
 			fmt.Println("Both a --localKey and --localDefault need to be passed in")
 			os.Exit(1)
 		}
 	}
-	if len(viper.GetString("localDefault")) != 0 {
-		if len(viper.GetString("localKey")) == 0 {
+	if (viper.GetStringSlice("localDefault") != nil) && len(viper.GetStringSlice("localDefault")) != 0 {
+		if (viper.GetStringSlice("localKey") != nil) && len(viper.GetStringSlice("localKey")) == 0 {
 			fmt.Println("Both a --localKey and --localDefault need to be passed in")
 			os.Exit(1)
 		}

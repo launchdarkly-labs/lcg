@@ -56,6 +56,36 @@ func templateHelpers() {
 		}
 	})
 
+	raymond.RegisterHelper("localValue", func(localValue, localType, quotes string) string {
+		var quoteWrapper string
+		if quotes == "single" {
+			quoteWrapper = "'"
+		} else {
+			quoteWrapper = "\""
+		}
+		switch localType {
+		case "string":
+			return strings.Join([]string{quoteWrapper, fmt.Sprintf(`%s`, localValue), quoteWrapper}, "")
+		}
+		return localValue
+	})
+
+	raymond.RegisterHelper("localType", func(localType string, options *raymond.Options) string {
+		switch localType {
+		case "number":
+			return options.DataStr("outNumber")
+		case "string":
+			return options.DataStr("outString")
+		case "bool":
+			return options.DataStr("outBool")
+		case "map":
+			return options.DataStr("outMap")
+		default:
+			fmt.Printf("I don't know about type %T!\n", localType)
+			return ""
+		}
+	})
+
 	raymond.RegisterHelper("outNumber", func(val1 string, options *raymond.Options) string {
 		frame := options.DataFrame()
 		frame.Set("outNumber", val1)
