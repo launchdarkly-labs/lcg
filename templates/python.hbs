@@ -7,7 +7,7 @@ class LDFlags:
     def __init__(self, ldclient):
         self.ldclient = ldclient
 
-    {{#each items}}
+    {{#each flags.items}}
     def {{snakeCase this.key}}(self, user):
         """
         {{#if this.name}}

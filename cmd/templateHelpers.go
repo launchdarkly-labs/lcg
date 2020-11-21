@@ -8,7 +8,6 @@ import (
 	"github.com/aymerick/raymond"
 	"github.com/iancoleman/strcase"
 	ldapi "github.com/launchdarkly/api-client-go"
-	"github.com/spf13/viper"
 )
 
 func templateHelpers() {
@@ -38,7 +37,7 @@ func templateHelpers() {
 			return ""
 		}
 	})
-	raymond.RegisterHelper("defaultValue", func(flag ldapi.FeatureFlag, quotes string) string {
+	raymond.RegisterHelper("defaultValue", func(flag ldapi.FeatureFlag, quotes string, options *raymond.Options) string {
 		var quoteWrapper string
 		if quotes == "single" {
 			quoteWrapper = "'"
@@ -48,11 +47,11 @@ func templateHelpers() {
 		if flag.Defaults != nil {
 			defaultVar := flag.Defaults.OffVariation
 			tempVar := *flag.Variations[defaultVar].Value
-			return parseReturnValues(tempVar, quoteWrapper)
+			return parseReturnValues(tempVar, quoteWrapper, options)
 		} else {
 			offVar := flag.Variations[len(flag.Variations)-1]
 			tempVar := *offVar.Value
-			return parseReturnValues(tempVar, quoteWrapper)
+			return parseReturnValues(tempVar, quoteWrapper, options)
 		}
 	})
 
@@ -110,9 +109,14 @@ func templateHelpers() {
 		return options.FnData(frame)
 	})
 
+	raymond.RegisterHelper("outComment", func(val1 string, options *raymond.Options) string {
+		frame := options.DataFrame()
+		frame.Set("userComment", val1)
+		return options.FnData(frame)
+	})
 }
 
-func parseReturnValues(tempVar interface{}, quoteWrapper string) string {
+func parseReturnValues(tempVar interface{}, quoteWrapper string, options *raymond.Options) string {
 	varCheck := tempVar
 	var returnVar string
 	switch s := varCheck.(type) {
@@ -121,9 +125,10 @@ func parseReturnValues(tempVar interface{}, quoteWrapper string) string {
 	case string:
 		returnVar = strings.Join([]string{quoteWrapper, fmt.Sprintf(`%s`, tempVar), quoteWrapper}, "")
 	case bool:
-		if viper.GetString("language") == "python" {
+		boolCase := options.DataStr("boolCase")
+		if boolCase == "title" {
 			returnVar = strings.Title(fmt.Sprintf("%v", tempVar))
-		} else {
+		} else if boolCase == "lower" {
 			returnVar = fmt.Sprintf("%v", tempVar)
 		}
 	case map[string]interface{}:
