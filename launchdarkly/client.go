@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/intheclouddan/launchdarkly-code-generator/version"
 	ldapi "github.com/launchdarkly/api-client-go"
 )
-
-// The version string gets updated at build time using -ldflags
-var version = "unreleased"
 
 const (
 	APIVersion = "20191212"
@@ -35,7 +33,7 @@ func NewClient(config *Config) (*Client, error) {
 	cfg := &ldapi.Configuration{
 		BasePath:      basePath,
 		DefaultHeader: make(map[string]string),
-		UserAgent:     fmt.Sprintf("launchdarkly-code-generator/0.0.1"),
+		UserAgent:     fmt.Sprintf("launchdarkly-code-generator/%s", version.Version),
 	}
 
 	cfg.AddDefaultHeader("LD-API-Version", APIVersion)
