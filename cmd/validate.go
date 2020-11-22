@@ -16,9 +16,11 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -40,14 +42,23 @@ to quickly create a Cobra application.`,
 	},
 }
 
-var inFile string
+var flagFile string
 var clean bool
+var git bool
 
 func init() {
-	validateCmd.PersistentFlags().StringVar(&inFile, "inFile", "", "LaunchDarkly Project to query for flags")
-	viper.BindPFlag("inFile", validateCmd.PersistentFlags().Lookup("inFile"))
+	validateCmd.PersistentFlags().StringVar(&flagFile, "flagFile", "", "LaunchDarkly Project to query for flags")
+	if err := viper.BindPFlag("flagFile", validateCmd.PersistentFlags().Lookup("flagFile")); err != nil {
+		check(err)
+	}
 	validateCmd.PersistentFlags().BoolVar(&clean, "clean", false, "LaunchDarkly Project to query for flags")
-	viper.BindPFlag("clean", validateCmd.PersistentFlags().Lookup("clean"))
+	if err := viper.BindPFlag("clean", validateCmd.PersistentFlags().Lookup("clean")); err != nil {
+		check(err)
+	}
+	validateCmd.PersistentFlags().BoolVar(&git, "git", false, "Check if file is staged for git commit")
+	if err := viper.BindPFlag("git", validateCmd.PersistentFlags().Lookup("git")); err != nil {
+		check(err)
+	}
 	rootCmd.AddCommand(validateCmd)
 
 	// Here you will define your flags and configuration settings.
@@ -62,44 +73,14 @@ func init() {
 }
 
 func validateFlagFile() {
-
-	// inFile, err := os.Open()
-	// check(err)
-	readFile, err := ioutil.ReadFile(viper.GetString("inFile"))
+	readFile, err := ioutil.ReadFile(viper.GetString("flagFile"))
 	check(err)
 	outFile := removeLocalFlags(string(readFile), "LOCAL_LCG_FLAGS_BEGIN", "LOCAL_LCG_FLAGS_END")
-
-	fmt.Println(outFile)
-	// lines := strings.Split(string(readFile), "\n")
-	// outFile := []string{}
-	// for idx, line := range lines {
-	// 	// only print after %startHERE
-	// 	equalStart := strings.Index(line, "LOCAL_LCG_FLAGS_BEGIN")
-	// 	if equalStart > 0 {
-	// 		if !(viper.GetBool("clean")) {
-	// 			fmt.Println("Local Flags found!")
-	// 			os.Exit(1)
-	// 		}
-	// 	}
-
-	// 	equalEnd := strings.Index(line, "LOCAL_LCG_FLAGS_END")
-	// 	fmt.Println(equalEnd)
-	// 	if (equalStart == -1) || (idx < equalStart) {
-	// 		outFile = append(outFile, line)
-	// 	} else if equalEnd != -1 && idx > equalEnd {
-	// 		fmt.Println(equalEnd)
-	// 		outFile = append(outFile, line)
-	// 	}
-	//if startPrint {
-	//fmt.Println(i, line)
-	// instead of printing to the screen, this is where
-	// you want to start writing to a new file a.k.a copying the file
-
-	// how it is done at https://www.socketloop.com/tutorials/golang-simple-file-scaning-and-remove-virus-example
-	//}
-	//}
-	//fmt.Println(outFile)
-
+	if viper.GetBool("clean") {
+		if err := ioutil.WriteFile(viper.GetString("flagFile"), []byte(outFile), 0644); err != nil {
+			check(err)
+		}
+	}
 }
 
 func removeLocalFlags(str string, start string, end string) (result string) {
@@ -110,7 +91,26 @@ func removeLocalFlags(str string, start string, end string) (result string) {
 	for idx, line := range lines {
 		s := strings.Index(line, "LOCAL_LCG_FLAGS_BEGIN")
 		if s > 0 {
-			if !(viper.GetBool("clean")) {
+			if viper.GetBool("git") && !(viper.GetBool("clean")) {
+				cmd := exec.Command("git", "diff", "--cached", "--exit-code", "--", viper.GetString("flagFile"))
+				err := cmd.Run()
+				var (
+					ee *exec.ExitError
+					pe *os.PathError
+				)
+				if errors.As(err, &ee) {
+					fmt.Println("Local flags found staged.") // ran, but non-zero exit code
+					os.Exit(ee.ExitCode())
+
+				} else if errors.As(err, &pe) {
+					fmt.Printf("os.PathError: %v", pe)
+
+				} else if err != nil {
+					fmt.Printf("%v", err)
+					os.Exit(ee.ExitCode())
+
+				}
+			} else if !(viper.GetBool("clean")) {
 				fmt.Println("Local Flags found!")
 				os.Exit(1)
 			}

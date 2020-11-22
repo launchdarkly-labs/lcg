@@ -9,7 +9,7 @@ go run main.go generate --apiToken api-12345 --projectKey default --outFile ./LD
 
 This will generate a new file `LDFlags.py` in the current directory.
 
-Each flag's default value will be set to the `OffVariation` under `Defaults`. It currently does not handle the case were no `OffVariation` is set.
+Each flarrrg's default value will be set to the `OffVariation` under `Defaults`. It currently does not handle the case were no `OffVariation` is set.
 
 ## Commands
 `generate` - creates a new file with optional local flags.

@@ -31,6 +31,12 @@ import (
 	"github.com/spf13/viper"
 )
 
+type LocalFlagTemplate struct {
+	Flag    string
+	Default string
+	Type    string
+}
+
 // generateCmd represents the generate command
 var generateCmd = &cobra.Command{
 	Use:   "generate",
@@ -45,7 +51,6 @@ var (
 	language        string
 	apiToken        string
 	projectKey      string
-	outFile         string
 	baseURI         string
 	tags            string
 	sdkAvailability string
@@ -55,28 +60,42 @@ var (
 
 func init() {
 	generateCmd.PersistentFlags().StringVarP(&language, "language", "l", "", "language files to output")
-	viper.BindPFlag("language", generateCmd.PersistentFlags().Lookup("language"))
+	if err := viper.BindPFlag("language", generateCmd.PersistentFlags().Lookup("language")); err != nil {
+		check(err)
+	}
 	generateCmd.PersistentFlags().StringVarP(&apiToken, "apiToken", "k", "", "LaunchDarkly API Token")
-	viper.BindPFlag("apiToken", generateCmd.PersistentFlags().Lookup("apiToken"))
+	if err := viper.BindPFlag("apiToken", generateCmd.PersistentFlags().Lookup("apiToken")); err != nil {
+		check(err)
+	}
 	generateCmd.PersistentFlags().StringVarP(&projectKey, "projectKey", "p", "", "LaunchDarkly Project to query for flags")
-	viper.BindPFlag("projectKey", generateCmd.PersistentFlags().Lookup("projectKey"))
-	generateCmd.PersistentFlags().StringVarP(&outFile, "outFile", "o", "", "Out file")
-	viper.BindPFlag("outFile", generateCmd.PersistentFlags().Lookup("outFile"))
+	if err := viper.BindPFlag("projectKey", generateCmd.PersistentFlags().Lookup("projectKey")); err != nil {
+		check(err)
+	}
+	generateCmd.PersistentFlags().StringVarP(&flagFile, "flagFile", "o", "", "Out file")
+	if err := viper.BindPFlag("flagFile", generateCmd.PersistentFlags().Lookup("flagFile")); err != nil {
+		check(err)
+	}
 	generateCmd.PersistentFlags().StringVarP(&baseURI, "baseUri", "b", "", "LaunchDarkly Instance")
-	viper.BindPFlag("baseUri", generateCmd.PersistentFlags().Lookup("baseUri"))
+	if err := viper.BindPFlag("baseUri", generateCmd.PersistentFlags().Lookup("baseUri")); err != nil {
+		check(err)
+	}
 	viper.SetDefault("baseUri", "https://app.launchdarkly.com")
 	generateCmd.PersistentFlags().StringVarP(&tags, "tags", "t", "", "Filter flags to specific tag")
-	viper.BindPFlag("tags", generateCmd.PersistentFlags().Lookup("tags"))
+	if err := viper.BindPFlag("tags", generateCmd.PersistentFlags().Lookup("tags")); err != nil {
+		check(err)
+	}
 	generateCmd.PersistentFlags().StringVarP(&sdkAvailability, "sdkAvailability", "a", "", "Filter flags based on client side availability")
-	viper.BindPFlag("sdkAvailability", generateCmd.PersistentFlags().Lookup("sdkAvailability"))
+	if err := viper.BindPFlag("sdkAvailability", generateCmd.PersistentFlags().Lookup("sdkAvailability")); err != nil {
+		check(err)
+	}
 	generateCmd.PersistentFlags().StringArrayVar(&localFlag, "localFlag", []string{}, "Temporary local flags appended to class")
-	viper.BindPFlag("localFlag", generateCmd.PersistentFlags().Lookup("localFlag"))
-	//generateCmd.PersistentFlags().StringSliceVar(&localDefault, "localDefault", nil, "Temporary local default values appended to class")
-	// viper.BindPFlag("localDefault", generateCmd.PersistentFlags().Lookup("localDefault"))
-	// generateCmd.PersistentFlags().StringSliceVar(&localType, "localType", nil, "Temporary local return types appended to class")
-	// viper.BindPFlag("localType", generateCmd.PersistentFlags().Lookup("localType"))
-	// generateCmd.PersistentFlags().StringVarP(&inputTemplate, "inputTemplate", "", "", "Read in a template to be rendered")
-	viper.BindPFlag("inputTemplate", generateCmd.PersistentFlags().Lookup("inputTemplate"))
+	if err := viper.BindPFlag("localFlag", generateCmd.PersistentFlags().Lookup("localFlag")); err != nil {
+		check(err)
+	}
+	generateCmd.PersistentFlags().StringVarP(&inputTemplate, "inputTemplate", "", "", "Read in a template to be rendered")
+	if err := viper.BindPFlag("inputTemplate", generateCmd.PersistentFlags().Lookup("inputTemplate")); err != nil {
+		check(err)
+	}
 	rootCmd.AddCommand(generateCmd)
 
 }
@@ -89,8 +108,8 @@ func check(e error) {
 }
 
 func generateTemplate() {
-	//localOverridesValidation()
-	//templateValidation()
+	localOverridesValidation(localFlag)
+	templateValidation()
 	var templateFile io.Reader
 	if len(viper.GetString("language")) != 0 {
 		var err error
@@ -110,23 +129,15 @@ func generateTemplate() {
 	}
 	// Register raymond template helpers
 	templateHelpers()
-	type localFlagTemplate struct {
-		Flag    string
-		Default string
-		Type    string
-	}
-	var localFlags []localFlagTemplate
-	//var localFlagMap map[string]interface{}
-	if localFlag != nil {
-		for _, flag := range localFlag {
-			flagParts := strings.Split(flag, ",")
-			fmt.Println(flagParts)
-			localFlags = append(localFlags, localFlagTemplate{
-				Flag:    flagParts[0],
-				Default: flagParts[1],
-				Type:    flagParts[2],
-			})
-		}
+
+	var localFlags []LocalFlagTemplate
+	for _, flag := range localFlag {
+		flagParts := strings.Split(flag, ",")
+		localFlags = append(localFlags, LocalFlagTemplate{
+			Flag:    flagParts[0],
+			Default: flagParts[1],
+			Type:    flagParts[2],
+		})
 	}
 	//data, err := tpl.Exec(flags)
 	ctx := make(map[string]interface{})
@@ -139,14 +150,14 @@ func generateTemplate() {
 	}
 
 	d1 := []byte(data)
-	localOutFile := viper.GetString("outFile")
+	localOutFile := viper.GetString("flagFile")
 	err = ioutil.WriteFile(localOutFile, d1, 0644)
 	check(err)
 	fmt.Printf("New LaunchDarkly flag generation written to %s\n", localOutFile)
 }
 
 func queryAPI() (ldapi.FeatureFlags, error) {
-	client, err := launchdarkly.NewClient(&launchdarkly.LaunchdarklyConfig{AccessToken: viper.GetString("apiToken"), BaseUri: viper.GetString("baseUri")})
+	client, err := launchdarkly.NewClient(&launchdarkly.Config{AccessToken: viper.GetString("apiToken"), BaseUri: viper.GetString("baseUri")})
 	if err != nil {
 		return ldapi.FeatureFlags{}, err
 	}

@@ -3,21 +3,19 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/viper"
 )
 
-func localOverridesValidation() {
-	if (viper.GetStringSlice("localKey") != nil) && len(viper.GetStringSlice("localKey")) != 0 {
-		if (viper.GetStringSlice("localDefault") != nil) && len(viper.GetStringSlice("localDefault")) == 0 {
-			fmt.Println("Both a --localKey and --localDefault need to be passed in")
-			os.Exit(1)
-		}
-	}
-	if (viper.GetStringSlice("localDefault") != nil) && len(viper.GetStringSlice("localDefault")) != 0 {
-		if (viper.GetStringSlice("localKey") != nil) && len(viper.GetStringSlice("localKey")) == 0 {
-			fmt.Println("Both a --localKey and --localDefault need to be passed in")
-			os.Exit(1)
+func localOverridesValidation(localFlag []string) {
+	if len(localFlag) > 0 {
+		for _, flag := range localFlag {
+			flagParts := strings.Split(flag, ",")
+			if len(flagParts) != 3 {
+				fmt.Printf("Wrong number of argument passed in for flag: %s", flagParts[0])
+				os.Exit(1)
+			}
 		}
 	}
 }

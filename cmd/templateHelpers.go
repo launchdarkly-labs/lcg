@@ -64,7 +64,7 @@ func templateHelpers() {
 		}
 		switch localType {
 		case "string":
-			return strings.Join([]string{quoteWrapper, fmt.Sprintf(`%s`, localValue), quoteWrapper}, "")
+			return strings.Join([]string{quoteWrapper, localValue, quoteWrapper}, "")
 		}
 		return localValue
 	})
@@ -111,8 +111,24 @@ func templateHelpers() {
 
 	raymond.RegisterHelper("outComment", func(val1 string, options *raymond.Options) string {
 		frame := options.DataFrame()
-		frame.Set("userComment", val1)
+		frame.Set("userComments", val1)
 		return options.FnData(frame)
+	})
+
+	raymond.RegisterHelper("localFlagBlock", func(options *raymond.Options) raymond.SafeString {
+		commentTag := options.DataStr("userComments")
+		localFlags := options.Value("localFlags").([]LocalFlagTemplate)
+		var flagArr []string
+		for _, flag := range localFlags {
+			flagArr = append(flagArr, options.FnCtxData(flag, options.DataFrame().Copy()), "\n")
+		}
+
+		if len(localFlags) > 0 {
+			beginBlock := fmt.Sprintf("%sLOCAL_LCG_FLAGS_BEGIN\n", commentTag)
+			endBlock := fmt.Sprintf("%sLOCAL_LCG_FLAGS_END\n", commentTag)
+			return raymond.SafeString(beginBlock + strings.Join(flagArr, "") + endBlock)
+		}
+		return ""
 	})
 }
 

@@ -22,12 +22,14 @@ type Client struct {
 	Ctx     context.Context
 }
 
-type LaunchdarklyConfig struct {
+//Config is passed to NewClient
+type Config struct {
 	AccessToken string `json:"access_token"`
-	BaseUri     string `json:"base_uri`
+	BaseUri     string `json:"base_uri"`
 }
 
-func NewClient(config *LaunchdarklyConfig) (*Client, error) {
+//NewClient creates a newly configured LaunchDarkly API client
+func NewClient(config *Config) (*Client, error) {
 	basePath := fmt.Sprintf(`%s/api/v2`, config.BaseUri)
 
 	cfg := &ldapi.Configuration{
