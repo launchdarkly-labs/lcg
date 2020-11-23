@@ -15,32 +15,34 @@ import (
 // validateCmd represents the validate command
 var validateCmd = &cobra.Command{
 	Use:   "validate",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Validate your flag file does not get committed with local flags",
+	Long:  "Validate your flag file does not get committed with local flags",
 	Run: func(cmd *cobra.Command, args []string) {
 		validateFlagFile()
 	},
 }
 
-var flagFile string
-var clean bool
-var git bool
+var (
+	flagFile string
+	clean    bool
+	git      bool
+)
+
+const (
+	localBegin = "LOCAL_LCG_FLAGS_BEGIN"
+	localEnd   = "LOCAL_LCG_FLAGS_END"
+)
 
 func init() {
-	validateCmd.PersistentFlags().StringVar(&flagFile, "flagFile", "", "LaunchDarkly Project to query for flags")
+	validateCmd.PersistentFlags().StringVar(&flagFile, "flagFile", "", "File that is validated")
 	if err := viper.BindPFlag("flagFile", validateCmd.PersistentFlags().Lookup("flagFile")); err != nil {
 		check(err)
 	}
-	validateCmd.PersistentFlags().BoolVar(&clean, "clean", false, "LaunchDarkly Project to query for flags")
+	validateCmd.PersistentFlags().BoolVar(&clean, "clean", false, "Removes any local flags in the flag file")
 	if err := viper.BindPFlag("clean", validateCmd.PersistentFlags().Lookup("clean")); err != nil {
 		check(err)
 	}
-	validateCmd.PersistentFlags().BoolVar(&git, "git", false, "Check if file is staged for git commit")
+	validateCmd.PersistentFlags().BoolVar(&git, "git", false, "Check if the flag file is staged for git commit with local flags present")
 	if err := viper.BindPFlag("git", validateCmd.PersistentFlags().Lookup("git")); err != nil {
 		check(err)
 	}
@@ -48,9 +50,13 @@ func init() {
 }
 
 func validateFlagFile() {
-	readFile, err := ioutil.ReadFile(viper.GetString("flagFile"))
+	if viper.GetString("flagFile") == "" {
+		fmt.Println("A flagFile must be provided.")
+		os.Exit(1)
+	}
+	readFile, err := ioutil.ReadFile(viper.GetString("--flagFile"))
 	check(err)
-	outFile := removeLocalFlags(string(readFile), "LOCAL_LCG_FLAGS_BEGIN", "LOCAL_LCG_FLAGS_END")
+	outFile := removeLocalFlags(string(readFile), localBegin, localEnd)
 	if viper.GetBool("clean") {
 		if err := ioutil.WriteFile(viper.GetString("flagFile"), []byte(outFile), 0644); err != nil {
 			check(err)
@@ -64,21 +70,17 @@ func removeLocalFlags(str string, start string, end string) (result string) {
 	var endLine int
 	var outFile []string
 	for idx, line := range lines {
-		s := strings.Index(line, "LOCAL_LCG_FLAGS_BEGIN")
+		s := strings.Index(line, start)
 		if s > 0 {
 			if viper.GetBool("git") && !(viper.GetBool("clean")) {
 				cmd := exec.Command("git", "diff", "--cached", "--exit-code", "--", viper.GetString("flagFile"))
 				err := cmd.Run()
 				var (
 					ee *exec.ExitError
-					pe *os.PathError
 				)
 				if errors.As(err, &ee) {
-					fmt.Println("Local flags found staged.") // ran, but non-zero exit code
+					fmt.Println("Local flags found staged!") // ran, but non-zero exit code
 					os.Exit(ee.ExitCode())
-
-				} else if errors.As(err, &pe) {
-					fmt.Printf("os.PathError: %v", pe)
 
 				} else if err != nil {
 					fmt.Printf("%v", err)
@@ -97,7 +99,7 @@ func removeLocalFlags(str string, start string, end string) (result string) {
 		break
 	}
 	for idx, line := range lines {
-		s := strings.Index(line, "LOCAL_LCG_FLAGS_END")
+		s := strings.Index(line, end)
 		if s == -1 {
 			continue
 		}

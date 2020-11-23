@@ -34,8 +34,8 @@ var generateCmd = &cobra.Command{
 
 var (
 	language        string
-	apiToken        string
-	projectKey      string
+	accessToken     string
+	projKey         string
 	baseURI         string
 	tags            string
 	sdkAvailability string
@@ -48,12 +48,12 @@ func init() {
 	if err := viper.BindPFlag("language", generateCmd.PersistentFlags().Lookup("language")); err != nil {
 		check(err)
 	}
-	generateCmd.PersistentFlags().StringVarP(&apiToken, "apiToken", "k", "", "LaunchDarkly API Token")
-	if err := viper.BindPFlag("apiToken", generateCmd.PersistentFlags().Lookup("apiToken")); err != nil {
+	generateCmd.PersistentFlags().StringVarP(&accessToken, "accessToken", "t", "", "LaunchDarkly API Token")
+	if err := viper.BindPFlag("accessToken", generateCmd.PersistentFlags().Lookup("accessToken")); err != nil {
 		check(err)
 	}
-	generateCmd.PersistentFlags().StringVarP(&projectKey, "projectKey", "p", "", "LaunchDarkly Project to query for flags")
-	if err := viper.BindPFlag("projectKey", generateCmd.PersistentFlags().Lookup("projectKey")); err != nil {
+	generateCmd.PersistentFlags().StringVarP(&projKey, "projKey", "p", "", "LaunchDarkly Project to query for flags")
+	if err := viper.BindPFlag("projKey", generateCmd.PersistentFlags().Lookup("projKey")); err != nil {
 		check(err)
 	}
 	generateCmd.PersistentFlags().StringVarP(&flagFile, "flagFile", "o", "", "Out file")
@@ -65,11 +65,11 @@ func init() {
 		check(err)
 	}
 	viper.SetDefault("baseUri", "https://app.launchdarkly.com")
-	generateCmd.PersistentFlags().StringVarP(&tags, "tags", "t", "", "Filter flags to specific tag")
+	generateCmd.PersistentFlags().StringVar(&tags, "tags", "", "Filter flags to specific tag")
 	if err := viper.BindPFlag("tags", generateCmd.PersistentFlags().Lookup("tags")); err != nil {
 		check(err)
 	}
-	generateCmd.PersistentFlags().StringVarP(&sdkAvailability, "sdkAvailability", "a", "", "Filter flags based on client side availability")
+	generateCmd.PersistentFlags().StringVar(&sdkAvailability, "sdkAvailability", "", "Filter flags based on client side availability")
 	if err := viper.BindPFlag("sdkAvailability", generateCmd.PersistentFlags().Lookup("sdkAvailability")); err != nil {
 		check(err)
 	}
@@ -142,7 +142,7 @@ func generateTemplate() {
 }
 
 func queryAPI() (ldapi.FeatureFlags, error) {
-	client, err := launchdarkly.NewClient(&launchdarkly.Config{AccessToken: viper.GetString("apiToken"), BaseUri: viper.GetString("baseUri")})
+	client, err := launchdarkly.NewClient(&launchdarkly.Config{AccessToken: viper.GetString("accessToken"), BaseUri: viper.GetString("baseUri")})
 	if err != nil {
 		return ldapi.FeatureFlags{}, err
 	}
@@ -156,11 +156,11 @@ func queryAPI() (ldapi.FeatureFlags, error) {
 		flagFilter.Filter = optional.NewString(strings.Join([]string{"sdkAvailability", viper.GetString("sdkAvailability")}, ":"))
 	}
 
-	featureFlags, _, err := client.Ld.FeatureFlagsApi.GetFeatureFlags(client.Ctx, viper.GetString("projectKey"), &flagFilter)
+	featureFlags, _, err := client.Ld.FeatureFlagsApi.GetFeatureFlags(client.Ctx, viper.GetString("projKey"), &flagFilter)
 	if err != nil {
 		return ldapi.FeatureFlags{}, err
 	}
-	fmt.Println(len(featureFlags.Items))
+
 	if len(featureFlags.Items) == 0 {
 		fmt.Println("No flags found.")
 		os.Exit(1)
