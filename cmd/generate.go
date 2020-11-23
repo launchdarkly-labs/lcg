@@ -124,7 +124,6 @@ func generateTemplate() {
 			Type:    flagParts[2],
 		})
 	}
-	//data, err := tpl.Exec(flags)
 	ctx := make(map[string]interface{})
 	ctx["flags"] = flags
 	ctx["localFlags"] = localFlags

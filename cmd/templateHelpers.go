@@ -21,6 +21,7 @@ func templateHelpers() {
 
 	raymond.RegisterHelper("returnCheck", func(flag ldapi.FeatureFlag, options *raymond.Options) string {
 		flagVar := *flag.Variations[0].Value
+
 		switch s := flagVar.(type) {
 		case float64:
 			return options.DataStr("outNumber")
@@ -112,6 +113,12 @@ func templateHelpers() {
 	raymond.RegisterHelper("outComment", func(val1 string, options *raymond.Options) string {
 		frame := options.DataFrame()
 		frame.Set("userComments", val1)
+		return options.FnData(frame)
+	})
+
+	raymond.RegisterHelper("boolCase", func(val1 string, options *raymond.Options) string {
+		frame := options.DataFrame()
+		frame.Set("boolCase", val1)
 		return options.FnData(frame)
 	})
 
