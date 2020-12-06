@@ -30,23 +30,24 @@ changelog:
       - '^docs:'
       - '^test:'
 
-brew:
-  name: lcg
+brews:
+  -
+    name: lcg
 
-  description: LaunchDarkly Code Generator to build custom flag wrappers
+    description: LaunchDarkly Code Generator to build custom flag wrappers
 
-  homepage: "https://launchdarkly.com"
+    homepage: "https://launchdarkly.com"
 
-  github:
-    owner: launchdarkly-labs
-    name: homebrew-tap
+    github:
+      owner: launchdarkly-labs
+      name: homebrew-tap
 
-  folder: Formula
+    folder: Formula
 
-  url_template: "https://github.com/launchdarkly-labs/lcg/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    url_template: "https://github.com/launchdarkly-labs/lcg/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
 
-  install: |
-    bin.install "lcg"
-  commit_author:
-    name: Dan OBrien
-    email: dobrien@launchdarkly.com
+    install: |
+      bin.install "lcg"
+    commit_author:
+      name: Dan OBrien
+      email: dobrien@launchdarkly.com
