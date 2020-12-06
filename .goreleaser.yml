@@ -38,7 +38,7 @@ brews:
 
     homepage: "https://launchdarkly.com"
 
-    github:
+    tap:
       owner: launchdarkly-labs
       name: homebrew-tap
 
