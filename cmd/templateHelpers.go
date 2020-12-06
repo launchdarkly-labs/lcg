@@ -122,20 +122,36 @@ func templateHelpers() {
 		return options.FnData(frame)
 	})
 
-	raymond.RegisterHelper("localFlagBlock", func(options *raymond.Options) raymond.SafeString {
+	raymond.RegisterHelper("localFlagBlock", func(spacing int, options *raymond.Options) raymond.SafeString {
 		commentTag := options.DataStr("userComments")
 		localFlags := options.Value("localFlags").([]LocalFlagTemplate)
+		indentSpacing := strings.Repeat(" ", spacing)
 		var flagArr []string
 		for _, flag := range localFlags {
 			flagArr = append(flagArr, options.FnCtxData(flag, options.DataFrame().Copy()), "\n")
 		}
 
 		if len(localFlags) > 0 {
-			beginBlock := fmt.Sprintf("%sLOCAL_LCG_FLAGS_BEGIN\n", commentTag)
-			endBlock := fmt.Sprintf("%sLOCAL_LCG_FLAGS_END\n", commentTag)
+			beginBlock := fmt.Sprintf("%s%sLOCAL_LCG_FLAGS_BEGIN\n", indentSpacing, commentTag)
+			endBlock := fmt.Sprintf("%s%sLOCAL_LCG_FLAGS_END\n", indentSpacing, commentTag)
 			return raymond.SafeString(beginBlock + strings.Join(flagArr, "") + endBlock)
 		}
 		return ""
+	})
+
+	raymond.RegisterHelper("description", func(description string, descChar string, indent int, options *raymond.Options) raymond.SafeString {
+		splitDesc := strings.Split(description, "\n")
+		var newDesc []string
+		indentChar := strings.Repeat(" ", indent)
+		for idx, line := range splitDesc {
+			if idx > 0 {
+				newDesc = append(newDesc, fmt.Sprintf("%s %s %s", indentChar, descChar, line))
+			} else {
+				newDesc = append(newDesc, fmt.Sprintf("%s %s", descChar, line))
+			}
+		}
+		retDesc := strings.Join(newDesc, "\n")
+		return raymond.SafeString(retDesc)
 	})
 }
 

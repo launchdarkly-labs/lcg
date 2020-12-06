@@ -54,7 +54,7 @@ func validateFlagFile() {
 		fmt.Println("A flagFile must be provided.")
 		os.Exit(1)
 	}
-	readFile, err := ioutil.ReadFile(viper.GetString("--flagFile"))
+	readFile, err := ioutil.ReadFile(viper.GetString("flagFile"))
 	check(err)
 	outFile := removeLocalFlags(string(readFile), localBegin, localEnd)
 	if viper.GetBool("clean") {
